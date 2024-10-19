@@ -48,7 +48,7 @@ lost = False
 
 # Show instructions initially
 instructions = True
-
+AIMove = False
 while True:
 
     # Check if game quit
@@ -160,8 +160,10 @@ while True:
     screen.blit(text, textRect)
 
     move = None
-
-    left, _, right = pygame.mouse.get_pressed()
+    if lost:
+        AIMove = False
+    if not AIMove:
+        left, _, right = pygame.mouse.get_pressed()
 
     # Check for a right-click to toggle flagging
     if right == 1 and not lost:
@@ -175,17 +177,20 @@ while True:
                         flags.add((i, j))
                     time.sleep(0.2)
 
-    elif left == 1:
-        mouse = pygame.mouse.get_pos()
+    elif left == 1 or AIMove:
+        if not AIMove:
+            mouse = pygame.mouse.get_pos()
 
         # If AI button clicked, make an AI move
-        if aiButton.collidepoint(mouse) and not lost:
+        if (aiButton.collidepoint(mouse) or AIMove) and not lost:
+            AIMove = True
             move = ai.make_safe_move()
             if move is None:
                 move = ai.make_random_move()
                 if move is None:
                     flags = ai.mines.copy()
                     print("No moves left to make.")
+                    AIMove = False
                 else:
                     print("No known safe moves, AI making random move.")
             else:
