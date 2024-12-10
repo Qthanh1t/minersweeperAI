@@ -211,25 +211,25 @@ class MinesweeperAI():
 
         new_safes = set()
         new_mines = set()
+        for turn in range(3):
+            for sentence in self.knowledge:
+                if len(sentence.cells) == 0:
+                    self.knowledge.remove(sentence)
+                else:
+                    tmp_new_safes = sentence.known_safes()
+                    tmp_new_mines = sentence.known_mines()
 
-        for sentence in self.knowledge:
-            if len(sentence.cells) == 0:
-                self.knowledge.remove(sentence)
-            else:
-                tmp_new_safes = sentence.known_safes()
-                tmp_new_mines = sentence.known_mines()
+                    if type(tmp_new_safes) is set:
+                        new_safes |= tmp_new_safes
 
-                if type(tmp_new_safes) is set:
-                    new_safes |= tmp_new_safes
+                    if type(tmp_new_mines) is set:
+                        new_mines |= tmp_new_mines
 
-                if type(tmp_new_mines) is set:
-                    new_mines |= tmp_new_mines
+            for safe in new_safes:
+                self.mark_safe(safe)
 
-        for safe in new_safes:
-            self.mark_safe(safe)
-
-        for mine in new_mines:
-            self.mark_mine(mine)
+            for mine in new_mines:
+                self.mark_mine(mine)
 
         prev_sentence = new_sentence
 
@@ -250,6 +250,8 @@ class MinesweeperAI():
             prev_sentence = sentence
 
         self.knowledge += new_inferences
+        
+        
 
     def make_safe_move(self):
         """

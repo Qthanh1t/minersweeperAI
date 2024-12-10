@@ -175,7 +175,7 @@ while True:
                         flags.remove((i, j))
                     else:
                         flags.add((i, j))
-                    time.sleep(0.2)
+                    time.sleep(0.05)
 
     elif left == 1 or AIMove:
         if not AIMove:
