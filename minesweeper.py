@@ -132,12 +132,12 @@ class MinesweeperAI():
     Minesweeper AI
     """
 
-    def __init__(self, height=8, width=8):
+    def __init__(self, height=8, width=8, mine=8):
 
-        # Set chiều cao và chiều rộng
+        # Set chiều cao, chiều rộng và số mìn
         self.height = height
         self.width = width
-
+        self.mine = mine
         # Theo dõi các ô nào đã được mở
         self.moves_made = set()
 
@@ -150,19 +150,28 @@ class MinesweeperAI():
 
     def mark_mine(self, cell):
         """
-        Đánh dấu một ô là mìn và cập nhật tất cả các kiến thức
+        Đánh dấu một ô là mìn.
         """
-        self.mines.add(cell)
-        for sentence in self.knowledge:
-            sentence.mark_mine(cell)
+        if cell not in self.mines:
+            self.mines.add(cell)
+            self.knowledge = [
+                Sentence(sentence.cells - {cell}, sentence.count - 1)
+                if cell in sentence.cells else sentence
+                for sentence in self.knowledge
+            ]
 
     def mark_safe(self, cell):
         """
-        Đánh dấu một ô là an toàn và cập nhật tất cả các kiến thức
+        Đánh dấu một ô là an toàn.
         """
-        self.safes.add(cell)
-        for sentence in self.knowledge:
-            sentence.mark_safe(cell)
+        if cell not in self.safes:
+            self.safes.add(cell)
+            self.knowledge = [
+                Sentence(sentence.cells - {cell}, sentence.count)
+                if cell in sentence.cells else sentence
+                for sentence in self.knowledge
+            ]
+
 
     def nearby_cells(self, cell):
         cells = set()
@@ -211,45 +220,48 @@ class MinesweeperAI():
 
         new_safes = set()
         new_mines = set()
-        for turn in range(3):
-            for sentence in self.knowledge:
-                if len(sentence.cells) == 0:
-                    self.knowledge.remove(sentence)
-                else:
-                    tmp_new_safes = sentence.known_safes()
-                    tmp_new_mines = sentence.known_mines()
 
-                    if type(tmp_new_safes) is set:
-                        new_safes |= tmp_new_safes
+        for sentence in self.knowledge:
+            if len(sentence.cells) == 0:
+                self.knowledge.remove(sentence)
+            else:
+                tmp_new_safes = sentence.known_safes()
+                tmp_new_mines = sentence.known_mines()
 
-                    if type(tmp_new_mines) is set:
-                        new_mines |= tmp_new_mines
+                if type(tmp_new_safes) is set:
+                    new_safes |= tmp_new_safes
 
-            for safe in new_safes:
+                if type(tmp_new_mines) is set:
+                    new_mines |= tmp_new_mines
+
+        for safe in new_safes:
+            if safe not in self.safes:
                 self.mark_safe(safe)
 
-            for mine in new_mines:
+        for mine in new_mines:
+            if mine not in self.mines:
                 self.mark_mine(mine)
 
         prev_sentence = new_sentence
 
         new_inferences = []
+        for sentence1 in self.knowledge:
+            for sentence2 in self.knowledge:
+                if sentence1 == sentence2 or len(sentence1.cells) == 0 or len(sentence2.cells) == 0:
+                    continue
 
-        for sentence in self.knowledge:
-            if len(sentence.cells) == 0:
-                self.knowledge.remove(sentence)
+                # Nếu sentence1 là tập con của sentence2
+                if sentence1.cells <= sentence2.cells:
+                    inferred_cells = sentence2.cells - sentence1.cells
+                    inferred_count = sentence2.count - sentence1.count
+                    new_inference = Sentence(inferred_cells, inferred_count)
 
-            elif prev_sentence == sentence:
-                break
-            elif prev_sentence.cells <= sentence.cells:
-                inf_cells = sentence.cells - prev_sentence.cells
-                inf_count = sentence.count - prev_sentence.count
+                    # Kiểm tra nếu suy luận mới chưa tồn tại
+                    if new_inference not in self.knowledge and len(new_inference.cells) > 0:
+                        new_inferences.append(new_inference)
 
-                new_inferences.append(Sentence(inf_cells, inf_count))
+        self.knowledge.extend(new_inferences)
 
-            prev_sentence = sentence
-
-        self.knowledge += new_inferences
         
         
 
@@ -261,37 +273,27 @@ class MinesweeperAI():
         và self.moves_made, nhưng không được sửa đổi bất kỳ giá trị nào trong số đó.
         """
 
-        safe_moves = self.safes.copy()
+        safe_moves = self.safes - self.moves_made
+        if safe_moves:
+            return safe_moves.pop()
 
-        safe_moves -= self.moves_made
+        # Nếu không có nước đi an toàn ngay lập tức, thử kiểm tra thêm tri thức
+        for sentence in self.knowledge:
+            inferred_safes = sentence.known_safes()
+            if inferred_safes:
+                return next(iter(inferred_safes - self.moves_made), None)
 
-        if len(safe_moves) == 0:
-            return None
-
-        return safe_moves.pop()
+        return None
 
     def make_random_move(self):
         """
-        Trả lại một nước đi random
-        chọn các ô có các yếu tố sau:
-            1) chưa được mở
-            2) chưa biết đó là mìn
+        Trả về một nước đi ngẫu nhiên.
         """
+        possible_moves = [
+            (i, j)
+            for i in range(self.height)
+            for j in range(self.width)
+            if (i, j) not in self.moves_made and (i, j) not in self.mines
+        ]
+        return random.choice(possible_moves) if possible_moves else None
 
-        def get_random_cell():
-            return (random.randrange(self.height),
-                    random.randrange(self.height))
-
-        # Nếu không có nước đi random, trả về None
-        # width=8 * height=8 - mines=8 -> 56
-        if len(self.moves_made) == 56:
-            return None
-
-        random_move = get_random_cell()
-
-        not_safe_moves = self.moves_made | self.mines
-
-        while random_move in not_safe_moves:
-            random_move = get_random_cell()
-
-        return random_move

@@ -4,9 +4,9 @@ import time
 
 from minesweeper import Minesweeper, MinesweeperAI
 
-HEIGHT = 8
-WIDTH = 8
-MINES = 8
+HEIGHT = 10
+WIDTH = 10
+MINES = 12
 
 # Colors
 BLACK = (0, 0, 0)
@@ -200,7 +200,7 @@ while True:
         # Reset game state
         elif resetButton.collidepoint(mouse):
             game = Minesweeper(height=HEIGHT, width=WIDTH, mines=MINES)
-            ai = MinesweeperAI(height=HEIGHT, width=WIDTH)
+            ai = MinesweeperAI(height=HEIGHT, width=WIDTH, mine=MINES)
             revealed = set()
             flags = set()
             lost = False
